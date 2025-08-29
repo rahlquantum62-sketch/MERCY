@@ -1,107 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MERCY & RAHL 💖</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Love Chat</title>
   <style>
     body {
       margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #ff9a9e, #fad0c4);
       height: 100vh;
-      overflow: hidden;
       display: flex;
       justify-content: center;
       align-items: center;
-      background: linear-gradient(135deg, #ffdde1, #ee9ca7);
-      font-family: 'Poppins', sans-serif;
-      position: relative;
+      overflow: hidden;
     }
-    .container {
+    .login-box, .username-box, .chat-box {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
       text-align: center;
-      background: rgba(255, 255, 255, 0.85);
-      padding: 2rem;
-      border-radius: 20px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-      z-index: 2;
-    }
-    h1 {
-      font-size: 2rem;
-      color: #e91e63;
-      margin-bottom: 1rem;
-    }
-    input {
-      padding: 0.8rem;
-      width: 80%;
-      border: 2px solid #e91e63;
-      border-radius: 10px;
-      margin-bottom: 1rem;
-      font-size: 1rem;
-    }
-    button {
-      padding: 0.8rem 2rem;
-      background: #e91e63;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-    button:hover { background: #d81b60; }
-    .error {
-      margin-top: 1rem;
-      color: red;
+      width: 300px;
       display: none;
+    }
+    input, button {
+      margin: 10px 0;
+      padding: 10px;
+      width: 90%;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    #chat {
+      max-height: 400px;
+      overflow-y: auto;
+      text-align: left;
+      margin-bottom: 10px;
+    }
+    .msg {
+      padding: 6px 10px;
+      margin: 4px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    .mine {
+      background: #ff9a9e;
+      align-self: flex-end;
+    }
+    .theirs {
+      background: #fad0c4;
+      align-self: flex-start;
     }
     .emoji {
       position: absolute;
       font-size: 2rem;
-      animation: float linear infinite;
-      opacity: 0.8;
+      animation: float 8s linear infinite;
     }
     @keyframes float {
-      from {
-        transform: translateY(100vh) rotate(0deg);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(-10vh) rotate(360deg);
-        opacity: 1;
-      }
+      from { transform: translateY(100vh) scale(0.8); opacity: 1; }
+      to { transform: translateY(-10vh) scale(1.2); opacity: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>💖 Mercy & Rahl ❤️</h1>
-    <input type="password" id="password" placeholder="Enter our secret password" />
-    <br>
+  <div class="login-box" id="loginBox">
+    <h2>Enter Love Password</h2>
+    <input type="password" id="password" placeholder="Password">
     <button onclick="checkPassword()">Enter</button>
-    <p class="error" id="error">Wrong password! Try again 💔</p>
+    <p id="error" style="color:red"></p>
   </div>
 
-  <script>
-    // Floating emojis
-    const emojis = ["❤️","💖"];
-    for (let i=0; i<20; i++) {
-      const span = document.createElement("span");
-      span.classList.add("emoji");
-      span.textContent = emojis[i % 2];
-      document.body.appendChild(span);
-      span.style.left = Math.random()*100 + "vw";
-      span.style.fontSize = 20 + Math.random()*20 + "px";
-      span.style.animationDuration = 5 + Math.random()*5 + "s";
-      span.style.animationDelay = Math.random()*5 + "s";
+  <div class="username-box" id="usernameBox">
+    <h2>Choose Username</h2>
+    <input type="text" id="username" placeholder="e.g. Rahl or Mercy">
+    <button onclick="setUsername()">Continue</button>
+  </div>
+
+  <div class="chat-box" id="chatBox">
+    <h2>💌 Love Chat</h2>
+    <div id="chat"></div>
+    <input type="text" id="messageInput" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } 
+      from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    // 🔹 Firebase config from .env (will be injected in build step)
+    const firebaseConfig = {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let username = "";
+
+    function checkPassword() {
+      const pass = document.getElementById("password").value;
+      if (pass === "MERCY AND RAHL") {
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("usernameBox").style.display = "block";
+      } else {
+        document.getElementById("error").innerText = "Wrong password!";
+      }
     }
 
-    // Password check
-    function checkPassword() {
-      const input = document.getElementById('password').value.trim().toUpperCase();
-      if (input === "MERCY AND RAHL") {
-        window.location.href = "index.html";
-      } else {
-        document.getElementById('error').style.display = "block";
+    window.checkPassword = checkPassword;
+
+    function setUsername() {
+      username = document.getElementById("username").value.trim();
+      if (username) {
+        document.getElementById("usernameBox").style.display = "none";
+        document.getElementById("chatBox").style.display = "block";
+        loadMessages();
       }
+    }
+
+    window.setUsername = setUsername;
+
+    async function sendMessage() {
+      const input = document.getElementById("messageInput");
+      if (!input.value.trim()) return;
+
+      await addDoc(collection(db, "messages"), {
+        user: username,
+        text: input.value.trim(),
+        time: Date.now()
+      });
+
+      input.value = "";
+    }
+
+    window.sendMessage = sendMessage;
+
+    function loadMessages() {
+      const q = query(collection(db, "messages"), orderBy("time"));
+      onSnapshot(q, (snapshot) => {
+        const chat = document.getElementById("chat");
+        chat.innerHTML = "";
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.classList.add("msg");
+          div.classList.add(data.user === username ? "mine" : "theirs");
+          div.innerText = `${data.user}: ${data.text}`;
+          chat.appendChild(div);
+        });
+        chat.scrollTop = chat.scrollHeight;
+      });
+    }
+
+    // Floating emojis
+    const emojis = ["❤️","💕"];
+    for (let i = 0; i < 20; i++) {
+      const span = document.createElement("span");
+      span.classList.add("emoji");
+      span.innerText = emojis[i % 2];
+      span.style.left = Math.random() * 100 + "vw";
+      span.style.animationDuration = 5 + Math.random() * 5 + "s";
+      document.body.appendChild(span);
     }
   </script>
 </body>
