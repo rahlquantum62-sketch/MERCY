@@ -1,0 +1,36 @@
+<!-- memory.html -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Memory Timeline</title><link rel="stylesheet" href="style.css"></head>
+<body>
+  <div class="container">
+    <h2>Memory Timeline</h2>
+    <div id="timeline" class="timeline card"></div>
+    <div style="margin-top:12px"><a href="chat.html" class="btn ghost">Back</a></div>
+  </div>
+
+  <script type="module">
+    import { FIREBASE_CONFIG } from './firebase-config.js';
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db = getFirestore(app);
+
+    const timelineEl = document.getElementById('timeline');
+    const q = query(collection(db,'memoryTimeline'), orderBy('date','asc'));
+    onSnapshot(q, snap=>{
+      timelineEl.innerHTML = '';
+      snap.forEach(d=>{
+        const data = d.data();
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `<h4>${data.title || ''} <small style="color:var(--muted)">${data.date}</small></h4>
+                        <p>${data.caption || ''}</p>
+                        ${data.url ? `<img src="${data.url}" style="width:100%;border-radius:8px;margin-top:8px">` : ''}`;
+        timelineEl.appendChild(el);
+      });
+    });
+  </script>
+</body>
+</html>
