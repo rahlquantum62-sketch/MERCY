@@ -1,108 +1,84 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Mercy & Rahl — Private Romantic App</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercy ❤️ Rahl</title>
   <style>
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background: linear-gradient(to right, #ff9a9e, #fad0c4);
       height: 100vh;
-      overflow-x: hidden;
-      overflow-y: auto;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
-    .feature-list{margin-top:24px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px; padding:0 12px;}
-    .feature{background:rgba(255,255,255,0.9);border-radius:12px;padding:14px;box-shadow:0 4px 12px rgba(0,0,0,0.15);text-align:center;transition:transform 0.3s;}
-    .feature:hover{transform:translateY(-4px);}
-    .feature h4{margin:8px 0;color:#e91e63;}
-    .feature p{font-size:14px;color:#333;}
-    .login-card{background:white;border-radius:15px;padding:20px;box-shadow:0 4px 15px rgba(0,0,0,0.2);width:300px;margin:0 auto;text-align:center;}
-    input, button{margin:10px 0;padding:10px;width:90%;border-radius:8px;border:1px solid #ccc;}
-    .btn{cursor:pointer;background:#e91e63;color:white;border:none;}
-    .btn.ghost{background:transparent;color:#e91e63;border:1px solid #e91e63;}
-    .emoji{position:absolute;font-size:2rem;animation:float 8s linear infinite;pointer-events:none;}
-    @keyframes float{from{transform:translateY(100vh) scale(0.8);opacity:1;}to{transform:translateY(-10vh) scale(1.2);opacity:0;}}
+    .login-card {
+      background: rgba(255,255,255,0.95);
+      border-radius: 20px;
+      padding: 30px 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      text-align: center;
+      width: 320px;
+    }
+    input, button {
+      margin: 10px 0;
+      padding: 12px;
+      width: 90%;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    .btn {
+      cursor: pointer;
+      background: #e91e63;
+      color: white;
+      border: none;
+    }
+    .btn.ghost {
+      background: transparent;
+      color: #e91e63;
+      border: 2px solid #e91e63;
+    }
+    h1 { color: #fff; text-align:center; margin-bottom:20px; font-size:36px; text-shadow: 0 2px 6px rgba(0,0,0,0.2);}
+    .emoji {
+      position: absolute;
+      font-size: 2rem;
+      animation: float 8s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes float {
+      from { transform: translateY(100vh) scale(0.8); opacity: 1; }
+      to { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+    }
+    #err { color: #d33; margin-top:8px; display:none; font-size:14px;}
   </style>
 </head>
 <body>
-  <header style="text-align:center;margin-top:32px">
-    <h1>Mercy ❤️ Rahl</h1>
-    <p style="font-size:18px; color:#555">Your private space full of love and memories</p>
-  </header>
+  <h1>Mercy ❤️ Rahl</h1>
 
-  <section class="feature-list">
-    <div class="feature">
-      <h4>Personal Greeting</h4>
-      <p>See a sweet personalized message when you log in: "I love you Mercy 💖" or "Rahl loves you 💖".</p>
-    </div>
-    <div class="feature">
-      <h4>Rotating Slideshow</h4>
-      <p>Beautiful images fade or heart-shaped transitions, updated instantly from the admin panel.</p>
-    </div>
-    <div class="feature">
-      <h4>Real-time Chat</h4>
-      <p>Send colored bubble messages with timestamps, preserved history, and in-app notifications.</p>
-    </div>
-    <div class="feature">
-      <h4>Love Notes Wall</h4>
-      <p>Post and view sticky-note style love messages that update live for both of you.</p>
-    </div>
-    <div class="feature">
-      <h4>Memory Timeline</h4>
-      <p>Scroll through your shared photos/videos with captions and dates in a romantic timeline.</p>
-    </div>
-    <div class="feature">
-      <h4>Draw Together Canvas</h4>
-      <p>Real-time collaborative drawing board. Save snapshots to your memory collection.</p>
-    </div>
-    <div class="feature">
-      <h4>Special Dates Countdown</h4>
-      <p>Countdown to anniversaries, birthdays, or any special date you configure in the admin panel.</p>
-    </div>
-    <div class="feature">
-      <h4>Shared Music Playlist</h4>
-      <p>Embed Spotify or YouTube playlists to play your favorite love songs in the background.</p>
-    </div>
-    <div class="feature">
-      <h4>Daily Romantic Question</h4>
-      <p>Answer fun daily love questions together. Your answers are saved for memories.</p>
-    </div>
-    <div class="feature">
-      <h4>Custom Emoji & Stickers</h4>
-      <p>Use your own romantic emojis and stickers in the chat, uploaded from the admin panel.</p>
-    </div>
-  </section>
-
-  <section style="margin-top:32px;margin-bottom:60px;text-align:center">
-    <div class="login-card">
-      <h2>Login to Your Private Space</h2>
-      <p>Enter the shared password and your name to continue</p>
-      <input id="password" class="input" type="password" placeholder="Shared password (Mercy Rahl)">
-      <input id="name" class="input" type="text" placeholder="Your name (Mercy or Rahl)">
-      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
-        <button id="enterBtn" class="btn">Enter</button>
-        <button id="demoBtn" class="btn ghost">Demo</button>
-      </div>
-      <p id="err" style="color:#d33;margin-top:8px;display:none"></p>
-    </div>
-  </section>
+  <div class="login-card">
+    <h2>Enter Your Private Space</h2>
+    <input id="password" type="password" placeholder="Shared password (Mercy Rahl)">
+    <input id="name" type="text" placeholder="Your name (Mercy or Rahl)">
+    <button id="enterBtn" class="btn">Enter</button>
+    <p id="err"></p>
+  </div>
 
   <script>
-    // Login functionality
     const CORRECT = "MERCY RAHL";
-    document.getElementById('enterBtn').addEventListener('click', ()=>{
-      const pw = (document.getElementById('password').value || '').trim().toUpperCase();
-      const name = (document.getElementById('name').value || '').trim();
+    const enterBtn = document.getElementById('enterBtn');
+    enterBtn.addEventListener('click', ()=>{
+      const pw = (document.getElementById('password').value||'').trim().toUpperCase();
+      const name = (document.getElementById('name').value||'').trim();
       const err = document.getElementById('err');
       if(pw !== CORRECT){ err.textContent = 'Wrong password'; err.style.display='block'; return; }
       if(!name){ err.textContent = 'Enter your name (Mercy or Rahl)'; err.style.display='block'; return; }
       const n = name.toLowerCase().includes('mercy') ? 'Mercy' : (name.toLowerCase().includes('rahl') ? 'Rahl' : name);
       location.href = `chat.html?name=${encodeURIComponent(n)}`;
     });
-    document.getElementById('demoBtn').addEventListener('click', ()=> location.href='chat.html?name=Mercy');
 
     // Floating hearts
     const hearts = ["❤️","💕"];
