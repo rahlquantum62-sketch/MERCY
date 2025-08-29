@@ -1,116 +1,140 @@
-// --- Storage & defaults ---
-const STORAGE_KEY = 'our-love-data-v1'
-const DRAWINGS_KEY = 'our-love-drawings-v1'
-const defaults = { since: 'June 1, 2021', timeline: [], gallery: [], notes: [] }
+// app.js
+import { FIREBASE_CONFIG } from './firebase-config.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-function load(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw?JSON.parse(raw):structuredClone(defaults)}catch(e){console.error(e);return structuredClone(defaults)} }
-function save(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)) }
+const app = initializeApp(FIREBASE_CONFIG);
+const db = getFirestore(app);
 
-// --- Simple note UI (kept minimal) ---
-const data = load()
-function renderNotes(){ const nl = document.getElementById('notes-list'); nl.innerHTML=''; if(!data.notes||data.notes.length===0){ nl.innerHTML='<div class="muted">No notes yet — write the first one!</div>'; return } data.notes.slice().reverse().forEach(n=>{ const card = document.createElement('div'); card.className='note'; card.innerHTML = `<strong>${escapeHtml(n.from)}</strong> <small class="muted">${new Date(n.created).toLocaleString()}</small><p style="margin:6px 0 0">${escapeHtml(n.message)}</p>`; nl.appendChild(card) }) }
-document.getElementById('note-form').addEventListener('submit', e=>{ e.preventDefault(); const from = document.getElementById('from').value.trim(); const message = document.getElementById('message').value.trim(); if(!from||!message) return; data.notes.push({from,message,created:Date.now()}); save(data); document.getElementById('from').value=''; document.getElementById('message').value=''; renderNotes() })
-document.getElementById('export-notes').addEventListener('click', ()=>{ const payload = JSON.stringify(data.notes, null, 2); const blob = new Blob([payload], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='our-love-notes.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); })
-function escapeHtml(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
-renderNotes()
+// helpers
+const params = new URLSearchParams(location.search);
+const user = params.get('name') || 'Guest';
+const greetingEl = document.getElementById('greeting');
+const subEl = document.getElementById('sub');
 
-// --- Canvas Implementation ---
-const canvas = document.getElementById('board')
-const ctx = canvas.getContext('2d')
-let drawing = false
-let strokeColor = document.getElementById('color').value
-let strokeSize = Number(document.getElementById('size').value)
+const chatWindow = document.getElementById('chatWindow');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const openAdmin = document.getElementById('openAdmin');
 
-// Resize canvas to match CSS pixel size and devicePixelRatio
-function resizeCanvas(){ const rect = canvas.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr); canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px'; ctx.scale(dpr, dpr); redrawFromHistory(); }
-window.addEventListener('resize', ()=>{ clearTimeout(window._rc); window._rc = setTimeout(()=>{ ctx.setTransform(1,0,0,1,0,0); resizeCanvas(); }, 120) })
-
-// Drawing history for undo/redo
-const history = []
-let redoStack = []
-
-function pushHistory(snapshot){ history.push(snapshot); if(history.length>50) history.shift(); redoStack = []; saveDrawingsToStorage(); broadcastFrame({type:'history',payload:getHistorySnapshot()}) }
-function getHistorySnapshot(){ return history.map(h=>h) }
-
-function redrawFromHistory(){ ctx.clearRect(0,0,canvas.width,canvas.height); history.forEach(item=>{ drawPath(item, {replay:true}) }) }
-
-// Path format: {color,size,points:[{x,y},...]} where x,y are CSS pixels
-function beginPath(x,y){ drawing=true; currentPath = {color:strokeColor,size:strokeSize,points:[{x,y}]} }
-function extendPath(x,y){ if(!drawing||!currentPath) return; currentPath.points.push({x,y}); drawPath(currentPath) }
-function endPath(){ if(!drawing) return; drawing=false; pushHistory(structuredClone(currentPath)); currentPath=null }
-
-function drawPath(path, opts={}){
-  const s = path.size; const c = path.color; const pts = path.points
-  if(!pts||pts.length===0) return
-  ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth = s; ctx.strokeStyle = c; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
-  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y)
-  ctx.stroke();
-  if(!opts.replay) broadcastFrame({type:'stroke',payload:path})
+// personal greeting
+if(user.toLowerCase() === 'mercy'){
+  greetingEl.innerHTML = 'I love you Mercy 💖';
+} else if(user.toLowerCase() === 'rahl'){
+  greetingEl.innerHTML = 'Rahl loves you 💖';
+} else {
+  greetingEl.innerText = `Welcome ${user}`;
 }
 
-// Mouse / touch handlers
-let currentPath = null
-function getPosFromEvent(e){ const rect = canvas.getBoundingClientRect(); const touch = e.touches ? e.touches[0] : null; const clientX = touch?touch.clientX:e.clientX; const clientY = touch?touch.clientY:e.clientY; return {x: clientX - rect.left, y: clientY - rect.top} }
+// chat functions
+const messagesCol = collection(db, 'messages');
+function formatTime(ms){
+  const d = new Date(ms);
+  return d.toLocaleString();
+}
+function renderMessage(docData, mine){
+  const div = document.createElement('div');
+  div.className = 'msg ' + (docData.user && docData.user.toLowerCase().includes('rahl') ? 'rahl' : 'mercy');
+  div.innerHTML = `<div>${docData.text}</div><small>${docData.user || 'Anon'} • ${formatTime(docData.time)}</small>`;
+  return div;
+}
 
-canvas.addEventListener('pointerdown', (e)=>{ canvas.setPointerCapture(e.pointerId); const p = getPosFromEvent(e); beginPath(p.x,p.y) })
-canvas.addEventListener('pointermove', (e)=>{ if(!drawing) return; const p = getPosFromEvent(e); extendPath(p.x,p.y) })
-window.addEventListener('pointerup', (e)=>{ if(drawing) endPath() })
+const q = query(messagesCol, orderBy('time'));
+let firstLoad = true;
+let lastId = null;
+onSnapshot(q, snap => {
+  chatWindow.innerHTML = '';
+  snap.forEach(docSnap => {
+    const data = docSnap.data();
+    const node = renderMessage(data, data.user === user);
+    chatWindow.appendChild(node);
+    lastId = docSnap.id;
+  });
+  chatWindow.scrollTop = chatWindow.scrollHeight;
 
-document.getElementById('color').addEventListener('input',(e)=>{ strokeColor = e.target.value })
-document.getElementById('size').addEventListener('input',(e)=>{ strokeSize = Number(e.target.value) })
+  // in-page notification using Notification API
+  if(!firstLoad){
+    // show notification for the last message if it's from other user
+    const last = snap.docs[snap.docs.length - 1];
+    if(last){
+      const d = last.data();
+      if(d.user !== user){
+        notify(`${d.user}`, d.text);
+      }
+    }
+  }
+  firstLoad = false;
+});
 
-document.getElementById('clear').addEventListener('click', ()=>{ if(confirm('Clear the canvas?')){ history.length=0; redoStack.length=0; ctx.clearRect(0,0,canvas.width,canvas.height); saveDrawingsToStorage(); broadcastFrame({type:'clear'}) } })
-document.getElementById('undo').addEventListener('click', ()=>{ if(history.length===0) return; const item = history.pop(); redoStack.push(item); ctx.clearRect(0,0,canvas.width,canvas.height); history.forEach(it=>drawPath(it,{replay:true})); saveDrawingsToStorage(); broadcastFrame({type:'undo'}) })
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keypress', (e)=>{ if(e.key === 'Enter') sendMessage(); });
 
-// Save to gallery
-function saveCanvasImage(){ const dataUrl = canvas.toDataURL('image/png'); const drawings = loadDrawingsFromStorage(); drawings.unshift({dataUrl,created:Date.now()}); localStorage.setItem(DRAWINGS_KEY, JSON.stringify(drawings)); renderGallery(); }
-document.getElementById('save').addEventListener('click', ()=>{ saveCanvasImage(); alert('Saved to gallery (browser storage).') })
+async function sendMessage(){
+  const text = messageInput.value.trim();
+  if(!text) return;
+  await addDoc(messagesCol, { user, text, time: Date.now() });
+  messageInput.value = '';
+}
 
-// Download PNG
-document.getElementById('download').addEventListener('click', ()=>{ const dataUrl = canvas.toDataURL('image/png'); const a = document.createElement('a'); a.href=dataUrl; a.download = 'drawing.png'; document.body.appendChild(a); a.click(); a.remove(); })
+// Notifications (in-page)
+function notify(title, body){
+  if(!("Notification" in window)) return;
+  if(Notification.permission === "granted"){
+    new Notification(title, { body, icon: null });
+  } else if(Notification.permission !== "denied"){
+    Notification.requestPermission().then(p => { if(p === "granted") new Notification(title, { body }); });
+  }
+}
 
-// Copy share link (data URL encoded in hash)
-document.getElementById('copyLink').addEventListener('click', async ()=>{
-  const dataUrl = canvas.toDataURL('image/png'); const encoded = encodeURIComponent(dataUrl); const url = location.origin + location.pathname + '#drawing=' + encoded;
-  try{ await navigator.clipboard.writeText(url); alert('Share link copied to clipboard. Paste it to open this drawing.') }catch(e){ prompt('Copy this link:', url) }
-})
+// Slideshow: read 'slideshowImages' collection and render slides
+const slideshowArea = document.getElementById('slideshowArea');
+const slidesCol = collection(db, 'slideshowImages');
+let slides = [];
+let slideIndex = 0;
+function renderSlides(){
+  slideshowArea.innerHTML = '';
+  slides.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'slide' + (i===slideIndex ? ' show' : '');
+    const img = document.createElement('img');
+    img.src = s.url;
+    img.alt = s.caption || '';
+    div.appendChild(img);
+    slideshowArea.appendChild(div);
+  });
+}
+onSnapshot(query(slidesCol, orderBy('created')), snap => {
+  slides = snap.docs.map(d => ({ id:d.id, ...(d.data()) }));
+  if(slides.length === 0){
+    // placeholder slide
+    slides = [{url:'https://images.unsplash.com/photo-1511988617509-a57c8a288659?q=80&w=800&auto=format&fit=crop', caption:'Our love'}];
+  }
+  renderSlides();
+});
 
-// Gallery render
-function loadDrawingsFromStorage(){ try{ const raw = localStorage.getItem(DRAWINGS_KEY); return raw?JSON.parse(raw):[] }catch(e){return[]} }
-function renderGallery(){ const container = document.getElementById('canvas-gallery'); container.innerHTML=''; const items = loadDrawingsFromStorage(); if(items.length===0){ container.innerHTML = '<div class="muted">No saved drawings yet.</div>'; return } items.forEach(it=>{ const d = document.createElement('div'); d.className='thumb'; d.innerHTML = `<img src="${it.dataUrl}" alt="drawing" loading="lazy">`; d.addEventListener('click', ()=>{ const w = window.open(); w.document.write(`<img src="${it.dataUrl}" style="max-width:100%;height:auto;display:block;margin:20px auto">`) }); container.appendChild(d) }) }
-renderGallery()
+// automatic rotate
+setInterval(()=>{
+  if(slides.length === 0) return;
+  slideIndex = (slideIndex + 1) % slides.length;
+  const nodes = document.querySelectorAll('.slide');
+  nodes.forEach((n,i)=> n.classList.toggle('show', i===slideIndex));
+}, 4000);
 
-// Share / Sync: BroadcastChannel for same-origin live sync between tabs
-let bc = null
-const syncToggle = document.getElementById('syncToggle')
-function ensureBroadcast(){ if(!('BroadcastChannel' in window)) return null; if(!bc) bc = new BroadcastChannel('our-love-canvas'); bc.onmessage = (ev)=>{ handleBroadcast(ev.data) } return bc }
-function startSync(){ ensureBroadcast(); broadcastFrame({type:'request-sync'}) }
-function stopSync(){ if(bc){ bc.close(); bc = null } }
+// admin open
+openAdmin.addEventListener('click', ()=> location.href = 'admin.html');
 
-syncToggle.addEventListener('change', (e)=>{ if(e.target.checked){ ensureBroadcast(); alert('Live sync enabled for this browser (tabs on same origin). For cross-device realtime, we can add Firebase Realtime / Firestore later.') }else{ stopSync(); alert('Live sync disabled.') } })
-
-function broadcastFrame(msg){ if(syncToggle.checked && bc) bc.postMessage(msg) }
-
-function handleBroadcast(msg){ if(!msg || !msg.type) return; switch(msg.type){
-  case 'stroke':
-    history.push(msg.payload); drawPath(msg.payload,{replay:true}); saveDrawingsToStorage(); break;
-  case 'clear': history.length=0; ctx.clearRect(0,0,canvas.width,canvas.height); saveDrawingsToStorage(); break;
-  case 'undo':
-    history.pop(); ctx.clearRect(0,0,canvas.width,canvas.height); history.forEach(it=>drawPath(it,{replay:true})); saveDrawingsToStorage(); break;
-  case 'history':
-    if(Array.isArray(msg.payload)){ history.length=0; msg.payload.forEach(p=>history.push(p)); ctx.clearRect(0,0,canvas.width,canvas.height); history.forEach(it=>drawPath(it,{replay:true})); saveDrawingsToStorage(); }
-    break;
-  case 'request-sync':
-    if(history.length>0) broadcastFrame({type:'history',payload:getHistorySnapshot()}); break;
-} }
-
-// Save & load drawing history to local storage (for persistence)
-function saveDrawingsToStorage(){ try{ localStorage.setItem('our-love-history', JSON.stringify(history)); }catch(e){} }
-function loadHistoryFromStorage(){ try{ const raw = localStorage.getItem('our-love-history'); if(raw){ const h = JSON.parse(raw); history.length=0; h.forEach(it=>history.push(it)); } }catch(e){} }
-
-// initial setup
-loadHistoryFromStorage();
-setTimeout(()=>{
-  resizeCanvas();
-  ensureBroadcast()
-}, 60)
+// theme & settings (read from settings/general)
+async function applySettings(){
+  const sRef = doc(db, 'settings', 'general');
+  const snap = await getDoc(sRef);
+  if(snap.exists()){
+    const cfg = snap.data();
+    if(cfg.theme === 'night') document.body.style.background = 'linear-gradient(135deg,#020428,#1b1b2f)';
+    if(cfg.theme === 'hearts') document.body.style.background = 'radial-gradient(circle at 20% 20%, #ffd1e6,#ff9ab7)';
+    if(cfg.playlist) {
+      // embed small player area or add link to notes - for simplicity show below sub
+      subEl.innerText = `Playlist: ${cfg.playlist}`;
+    }
+  }
+}
+applySettings();
