@@ -1,0 +1,50 @@
+<!-- admin.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Mercy & Rahl</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container admin-panel">
+    <h2>Admin Panel</h2>
+
+    <div class="card">
+      <h4>Upload Slide (by URL)</h4>
+      <input id="slideUrl" class="input" placeholder="Image URL">
+      <input id="slideCaption" class="input" placeholder="Caption (optional)">
+      <button id="addSlideBtn" class="btn">Add Slide</button>
+    </div>
+
+    <div style="margin-top:12px" class="card">
+      <h4>Upload File to Storage</h4>
+      <input type="file" id="fileInput">
+      <button id="uploadFileBtn" class="btn">Upload & Add to Slideshow</button>
+    </div>
+
+    <div style="margin-top:12px" class="card">
+      <h4>Theme / Playlist / Special Dates</h4>
+      <select id="themeSelect" class="input">
+        <option value="pink">Pink Gradient</option>
+        <option value="hearts">Hearts</option>
+        <option value="night">Night Sky</option>
+      </select>
+      <input id="playlistInput" class="input" placeholder="Spotify / YouTube embed link">
+      <textarea id="datesInput" class="input" placeholder='Special dates JSON (e.g. [{"name":"Anniversary","date":"2025-09-01"}])' rows="3"></textarea>
+      <button id="saveSettings" class="btn">Save Settings</button>
+    </div>
+
+    <div style="margin-top:12px" class="card">
+      <h4>Manage Love Notes / Messages</h4>
+      <p>Use Firestore console for deletion or add management actions here.</p>
+    </div>
+
+    <div style="margin-top:12px">
+      <a href="chat.html" class="btn ghost">Back to Chat</a>
+    </div>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
