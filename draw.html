@@ -1,0 +1,80 @@
+<!-- draw.html -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Draw Together</title><link rel="stylesheet" href="style.css"></head>
+<body>
+  <div class="container">
+    <h2>Draw Together</h2>
+    <div class="card canvas-wrap">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="color" id="color" value="#ff4d6d">
+        <input type="range" id="size" min="1" max="64" value="6">
+        <button id="undo" class="btn">Undo</button>
+        <button id="clear" class="btn ghost">Clear</button>
+        <button id="save" class="btn">Save Snapshot</button>
+      </div>
+      <canvas id="board"></canvas>
+    </div>
+    <div style="margin-top:12px"><a href="chat.html" class="btn ghost">Back</a></div>
+  </div>
+
+  <script type="module">
+    import { FIREBASE_CONFIG } from './firebase-config.js';
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db = getFirestore(app);
+    const drawingsCol = collection(db,'drawings');
+
+    // canvas setup
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    function resize(){ canvas.width = canvas.clientWidth; canvas.height = 420; }
+    window.addEventListener('resize', resize); resize();
+
+    let drawing=false, current=null;
+    const history=[];
+    document.getElementById('color').addEventListener('change', ()=>currentColor = document.getElementById('color').value);
+    let currentColor = document.getElementById('color').value;
+    let currentSize = Number(document.getElementById('size').value);
+    document.getElementById('size').addEventListener('input', (e)=> currentSize = Number(e.target.value));
+
+    function getPos(e){
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.touches?e.touches[0].clientX:e.clientX) - rect.left;
+      const y = (e.touches?e.touches[0].clientY:e.clientY) - rect.top;
+      return {x,y};
+    }
+
+    canvas.addEventListener('pointerdown', (e)=>{ drawing=true; const p=getPos(e); current={color:currentColor,size:currentSize,points:[p]}; });
+    canvas.addEventListener('pointermove', (e)=>{ if(!drawing) return; const p=getPos(e); current.points.push(p); drawStroke(current); });
+    window.addEventListener('pointerup', (e)=>{ if(drawing){ drawing=false; history.push(current); current=null; } });
+
+    function drawStroke(path){
+      ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.strokeStyle = path.color; ctx.lineWidth = path.size;
+      ctx.beginPath(); ctx.moveTo(path.points[0].x, path.points[0].y);
+      for(let i=1;i<path.points.length;i++) ctx.lineTo(path.points[i].x,path.points[i].y);
+      ctx.stroke();
+    }
+    document.getElementById('clear').addEventListener('click', ()=>{ if(confirm('Clear?')){ ctx.clearRect(0,0,canvas.width,canvas.height); history.length=0; } });
+    document.getElementById('undo').addEventListener('click', ()=>{ history.pop(); redrawAll(); });
+
+    function redrawAll(){ ctx.clearRect(0,0,canvas.width,canvas.height); history.forEach(h=>drawStroke(h)); }
+
+    document.getElementById('save').addEventListener('click', async ()=>{
+      const dataUrl = canvas.toDataURL('image/png');
+      await addDoc(drawingsCol, { image: dataUrl, created: Date.now() });
+      alert('Saved drawing snapshot to memories.');
+    });
+
+    // BroadcastChannel for same-browser realtime draw (basic)
+    if('BroadcastChannel' in window){
+      const bc = new BroadcastChannel('rahl-draw');
+      canvas.addEventListener('pointermove', (e)=>{ if(!current) return; bc.postMessage({type:'stroke', payload: current}); });
+      bc.onmessage = (ev)=>{ if(ev.data && ev.data.type==='stroke'){ drawStroke(ev.data.payload); } }
+    }
+  </script>
+</body>
+</html>
