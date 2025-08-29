@@ -1,0 +1,15 @@
+// firestore.rules (starter - insecure)
+// WARNING: This is permissive. Restrict with auth or custom checks before production.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // allow read/write on needed collections
+    match /messages/{doc} { allow read, write: if true; }
+    match /slideshowImages/{doc} { allow read, write: if true; }
+    match /settings/{doc} { allow read, write: if true; }
+    match /loveNotes/{doc} { allow read, write: if true; }
+    match /memoryTimeline/{doc} { allow read, write: if true; }
+    match /drawings/{doc} { allow read, write: if true; }
+    match /{document=**} { allow read, write: if false; } // block everything else
+  }
+}
