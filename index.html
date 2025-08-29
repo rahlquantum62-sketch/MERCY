@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Our Love — A Tiny Website (with Draw Together Canvas)</title>
+  <meta name="description" content="A small romantic single-page site for two people. Includes timeline, gallery, love notes, and a shared drawing canvas." />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">❤︎</div>
+      <div>
+        <h1>Our Love — Memories & Draw Together</h1>
+        <p class="lead">Timeline, gallery, love notes — plus a shared drawing canvas. Draw together in realtime (same-browser tabs) or save and share drawings.</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="card hero" aria-labelledby="hero-title">
+        <div class="text">
+          <h2 id="hero-title">Hello, beautiful.</h2>
+          <p class="muted">A place for moments, jokes, doodles and small games.</p>
+
+          <div class="grid-2">
+            <div class="card">
+              <h3 style="margin-top:0">Draw Together (Canvas)</h3>
+              <div class="canvas-wrap">
+                <div class="tools">
+                  <label class="muted">Color <input type="color" id="color" value="#ff6b81"></label>
+                  <label class="muted">Size <input type="range" id="size" min="1" max="48" value="6"></label>
+                  <button class="btn" id="undo">Undo</button>
+                  <button class="btn ghost" id="clear">Clear</button>
+                  <button class="btn" id="save">Save to Gallery</button>
+                  <button class="btn ghost" id="download">Download PNG</button>
+                  <button class="btn" id="copyLink">Copy Share Link</button>
+                  <label class="muted" style="margin-left:auto">Sync: <input type="checkbox" id="syncToggle" title="Enable same-origin live sync"></label>
+                </div>
+
+                <div class="canvas">
+                  <canvas id="board"></canvas>
+                </div>
+
+                <div class="muted">Tips: Draw with mouse or finger. Use "Copy Share Link" to create a sharable data link for one drawing. Live sync works between tabs on the same browser using BroadcastChannel. For cross-device realtime, we can add Firebase later.</div>
+              </div>
+            </div>
+
+            <aside class="card photo">
+              <h3 style="margin-top:0">Gallery (Drawings)</h3>
+              <div class="gallery" id="canvas-gallery"></div>
+            </aside>
+          </div>
+        </div>
+
+        <aside class="photo card">
+          <img id="hero-photo" src="https://images.unsplash.com/photo-1511988617509-a57c8a288659?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=placeholder" alt="A romantic photo">
+        </aside>
+      </section>
+
+      <!-- Love notes + timeline (kept from original) -->
+      <section class="card" style="margin-top:12px">
+        <h3>Leave a love note</h3>
+        <form id="note-form">
+          <input id="from" placeholder="Your name (or nickname)" required />
+          <textarea id="message" rows="3" placeholder="Write something sweet..." required></textarea>
+          <div style="display:flex;gap:8px">
+            <button type="submit">Save note</button>
+            <button type="button" class="ghost" id="export-notes">Export notes</button>
+          </div>
+        </form>
+        <div class="notes-list card" id="notes-list" style="margin-top:12px"></div>
+      </section>
+
+      <footer>
+        <small>Made with ❤️ — open locally or host. Drawings & notes are saved in browser storage unless you enable online sync later.</small>
+      </footer>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
