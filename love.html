@@ -1,0 +1,49 @@
+<!-- love-notes.html -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Love Notes</title><link rel="stylesheet" href="style.css"></head>
+<body>
+  <div class="container">
+    <h2>Love Notes Wall</h2>
+    <div class="card">
+      <input id="noteName" class="input" placeholder="Your name (Mercy / Rahl)">
+      <textarea id="noteText" class="input" rows="3" placeholder="Write something loving..."></textarea>
+      <button id="postNote" class="btn">Post Note</button>
+    </div>
+
+    <div style="margin-top:12px" id="notesGrid" class="notes-grid"></div>
+    <div style="margin-top:12px"><a href="chat.html" class="btn ghost">Back</a></div>
+  </div>
+
+  <script type="module">
+    import { FIREBASE_CONFIG } from './firebase-config.js';
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db = getFirestore(app);
+
+    const notesGrid = document.getElementById('notesGrid');
+    const postNoteBtn = document.getElementById('postNote');
+
+    postNoteBtn.addEventListener('click', async ()=>{
+      const name = document.getElementById('noteName').value.trim() || 'Anonymous';
+      const text = document.getElementById('noteText').value.trim();
+      if(!text) return alert('Write something');
+      await addDoc(collection(db, 'loveNotes'), { name, text, time: Date.now() });
+      document.getElementById('noteText').value='';
+    });
+
+    const q = query(collection(db, 'loveNotes'), orderBy('time','desc'));
+    onSnapshot(q, snap=>{
+      notesGrid.innerHTML = '';
+      snap.forEach(d=>{
+        const data = d.data();
+        const el = document.createElement('div'); el.className='note';
+        el.innerHTML = `<strong>${data.name}</strong><p>${data.text}</p><small>${new Date(data.time).toLocaleString()}</small>`;
+        notesGrid.appendChild(el);
+      });
+    });
+  </script>
+</body>
+</html>
